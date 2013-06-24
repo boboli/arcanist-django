@@ -91,6 +91,9 @@ final class DjangoUnitTestEngine extends ArcanistBaseUnitTestEngine {
                     } else if($testResult == "FAIL") {
                         $result->setResult(
                             ArcanistUnitTestResult::RESULT_FAIL);
+                    } else if($testResult == "ERROR") {
+                        $result->setResult(
+                            ArcanistUnitTestResult::RESULT_FAIL);
                     } else if(strpos($testResult, "skipped") == 0) {
                         $result->setResult(
                             ArcanistUnitTestResult::RESULT_SKIP);
@@ -121,14 +124,14 @@ final class DjangoUnitTestEngine extends ArcanistBaseUnitTestEngine {
                 // more tracebacklines
                 // (empty line, so "\n\n")
                 while(preg_match(
-                        "/".DLINEBREAK."\nFAIL: (.*)\n".LINEBREAK."\n(.*?)\n\n/s",
+                        "/".DLINEBREAK."\n(FAIL|ERROR): (.*)\n".LINEBREAK."\n(.*?)\n\n/s",
                         $strbuf,
                         $failMatches,
                         PREG_OFFSET_CAPTURE)) {
                     // name of the test
-                    $testName = $failMatches[1][0];
+                    $testName = $failMatches[2][0];
                     // error/traceback string
-                    $errorStr = $failMatches[2][0];
+                    $errorStr = $failMatches[3][0];
 
                     // only set UserData on the ArcanistUnitTestResult if it
                     // exists
