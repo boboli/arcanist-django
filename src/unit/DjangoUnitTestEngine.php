@@ -1,7 +1,6 @@
 <?php
 
 
-const COVERAGE_TEMP_DIR = "_coverage_temp";
 const DLINEBREAK =
 "======================================================================";
 const LINEBREAK =
@@ -9,16 +8,13 @@ const LINEBREAK =
 
 
 final class DjangoUnitTestEngine extends ArcanistBaseUnitTestEngine {
-    public function getAppNames() {
+    private function getAppNames() {
         $working_copy = $this->getWorkingCopy();
-        return $working_copy->getConfig("unit.engine.django.test_apps",
-                                        "");
+        return $working_copy->getConfig("unit.engine.django.test_apps", "");
     }
 
     private function getManagePyDirs() {
         $managepyDirs = array();
-
-        //chdir($this->getWorkingCopy()->getProjectRoot());
 
         // look at all paths, and recursively look for a manage.py, only going
         // up in directories
@@ -146,55 +142,54 @@ final class DjangoUnitTestEngine extends ArcanistBaseUnitTestEngine {
 
         return $results;
     }
-
-    private function processCoverageResults($coverageTempDir, $results) {
+    private function processCoverageResults($results) {
         // generate annotated source files to find out which lines have
         // coverage
-        exec("coverage annotate -d ".$coverageTempDir);
+        exec("coverage annotate");
 
         // store all the coverage results for this project
         $coverageArray = array();
 
-        // dig through annotated coverage directory for coverage.py-
-        // generated ",cover" files
-        foreach(glob($coverageTempDir."/*,cover") as $coverFilePath) {
-            if(preg_match("/__init\.py/", $coverFilePath)) {
+        // walk through project directory, searching for all ",cover" files
+        // that coverage.py left behind
+        foreach(new RecursiveIteratorIterator(new RecursiveDirectoryIterator(
+                ".")) as $path) {
+            // paths are given as "./path/to/file.py,cover", so match the
+            // "path/to/file.py" part
+            if(!preg_match(":^\./(.*),cover$:", $path, $matches)) {
                 continue;
             }
-            // name of files are "path_to_file.py,cover", so match the
-            /// "path_to_file.py" part
-            if(preg_match(":^$coverageTempDir/(.*),cover:",
-                              $coverFilePath, $matches)) {
-                $srcFilePath = $matches[1];
 
-                // replace "_" with "/" to get real path
-                $srcFilePath = str_replace("_", "/", $srcFilePath);
-                $coverageStr = "";
+            $srcFilePath = $matches[1];
 
-                foreach(file($coverFilePath) as $coverLine) {
-                    switch($coverLine[0]) {
-                        case '>':
-                            $coverageStr .= 'C';
-                            break;
-                        case '!':
-                            $coverageStr .= 'U';
-                            break;
-                        case ' ':
-                            $coverageStr .= 'N';
-                            break;
-                        case '-':
-                            $coverageStr .= 'X';
-                            break;
-                        default:
-                            break;
-                    }
+            $coverageStr = "";
+
+            foreach(file($path) as $coverLine) {
+                switch($coverLine[0]) {
+                    case '>':
+                        $coverageStr .= 'C';
+                        break;
+                    case '!':
+                        $coverageStr .= 'U';
+                        break;
+                    case ' ':
+                        $coverageStr .= 'N';
+                        break;
+                    case '-':
+                        $coverageStr .= 'X';
+                        break;
+                    default:
+                        break;
                 }
+            }
 
-                // only add to coverage report if the path was originally
-                // specified by arc
-                if(in_array($srcFilePath, $this->getPaths())) {
-                    $coverageArray[$srcFilePath] = $coverageStr;
-                }
+            // delete the ,cover file
+            unlink($path);
+
+            // only add to coverage report if the path was originally
+            // specified by arc
+            if(in_array($srcFilePath, $this->getPaths())) {
+                $coverageArray[$srcFilePath] = $coverageStr;
             }
         }
 
@@ -206,6 +201,10 @@ final class DjangoUnitTestEngine extends ArcanistBaseUnitTestEngine {
     }
 
     public function run() {
+        // run everything relative to project root, so that our paths match up
+        // with $this->getPaths()
+        chdir($this->getWorkingCopy()->getProjectRoot());
+
         $resultsArray = array();
 
         // find all manage.py files
@@ -241,9 +240,7 @@ final class DjangoUnitTestEngine extends ArcanistBaseUnitTestEngine {
                 continue;
             }
 
-            $coverageTempDir = $managepyDir."/".COVERAGE_TEMP_DIR;
-
-            $this->processCoverageResults($coverageTempDir, $results);
+            $this->processCoverageResults($results);
 
             $resultsArray = array_merge($resultsArray, $results);
         }
