@@ -39,6 +39,17 @@ final class DjangoUnitTestEngine extends ArcanistBaseUnitTestEngine {
         return $managepyDirs;
     }
 
+    private function getPythonPaths() {
+        $pythonPaths = array();
+        foreach($this->getPaths() as $path) {
+            if(preg_match("/\.py$/", $path)) {
+                $pythonPaths[] = $path;
+            }
+        }
+
+        return $pythonPaths;
+    }
+
     private function runDjangoTestSuite($managepyPath) {
         // cleans coverage results from any previous runs
         exec("coverage erase");
@@ -145,7 +156,10 @@ final class DjangoUnitTestEngine extends ArcanistBaseUnitTestEngine {
     private function processCoverageResults($results) {
         // generate annotated source files to find out which lines have
         // coverage
-        exec("coverage annotate");
+        // limit files to only those "*.py" files in getPaths()
+        $pythonPaths = $this->getPythonPaths();
+        $pythonPathsStr = join(",", $this->getPythonPaths());
+        exec("coverage annotate --include=$pythonPathsStr");
 
         // store all the coverage results for this project
         $coverageArray = array();
