@@ -51,14 +51,20 @@ final class DjangoUnitTestEngine extends ArcanistBaseUnitTestEngine {
     }
 
     private function runDjangoTestSuite($managepyPath) {
-        // cleans coverage results from any previous runs
-        exec("coverage erase");
+        if($this->getEnableCoverage()) {
+            // cleans coverage results from any previous runs
+            exec("coverage erase");
+            $cmd = "coverage run --source='.'";
+        } else {
+            $cmd = "python";
+        }
+
         // runs tests with code coverage for specified app names,
         // only giving results on files in pwd (to ignore 3rd party
         // code), verbosity 2 for individual test results, pipe stderr to
         // stdout as the test results are on stderr
         $appNames = $this->getAppNames();
-        exec("coverage run --source='.' $managepyPath test -v2 $appNames 2>&1",
+        exec("$cmd $managepyPath test -v2 $appNames 2>&1",
              $testLines, $testExitCode);
 
         return $this->parseTestResults($testLines);
@@ -198,6 +204,7 @@ final class DjangoUnitTestEngine extends ArcanistBaseUnitTestEngine {
             }
 
             // delete the ,cover file
+            echo "path: $path\n";
             unlink($path);
 
             // only add to coverage report if the path was originally
@@ -254,7 +261,9 @@ final class DjangoUnitTestEngine extends ArcanistBaseUnitTestEngine {
                 continue;
             }
 
-            $this->processCoverageResults($results);
+            if($this->getEnableCoverage()) {
+                $this->processCoverageResults($results);
+            }
 
             $resultsArray = array_merge($resultsArray, $results);
         }
