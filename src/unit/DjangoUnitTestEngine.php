@@ -67,7 +67,12 @@ final class DjangoUnitTestEngine extends ArcanistBaseUnitTestEngine {
         exec("$cmd $managepyPath test -v2 $appNames 2>&1",
              $testLines, $testExitCode);
 
-        return $this->parseTestResults($testLines);
+        $testResults = array();
+        $testResults["testLines"] = $testLines;
+        $testResults["testExitCode"] = $testExitCode;
+        $testResults["results"] = $this->parseTestResults($testLines);
+
+        return $testResults;
     }
 
     private function parseTestResults($testLines) {
@@ -240,7 +245,10 @@ final class DjangoUnitTestEngine extends ArcanistBaseUnitTestEngine {
         foreach ($managepyDirs as $managepyDir) {
             $managepyPath = $managepyDir."/manage.py";
 
-            $results = $this->runDjangoTestSuite($managepyPath);
+            $testResults = $this->runDjangoTestSuite($managepyPath);
+            $testLines = $testResults["testLines"];
+            $testExitCode = $testResults["testExitCode"];
+            $results = $testResults["results"];
 
             // if we have not found any tests in the output, but the exit code
             // wasn't 0, the entire test suite has failed to run, since it ran
