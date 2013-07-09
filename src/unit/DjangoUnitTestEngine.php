@@ -13,6 +13,14 @@ final class DjangoUnitTestEngine extends ArcanistBaseUnitTestEngine {
         return $working_copy->getConfig("unit.engine.django.test_apps", "");
     }
 
+    // allow users to specify any additional args to put onto the end of
+    // "manage.py test"
+    private function getAdditionalManageArgs() {
+        $working_copy = $this->getWorkingCopy();
+        return $working_copy->getConfig(
+            "unit.engine.django.manage_py_args", "");
+    }
+
     private function getManagePyDirs() {
         $managepyDirs = array();
 
@@ -62,9 +70,11 @@ final class DjangoUnitTestEngine extends ArcanistBaseUnitTestEngine {
         // runs tests with code coverage for specified app names,
         // only giving results on files in pwd (to ignore 3rd party
         // code), verbosity 2 for individual test results, pipe stderr to
-        // stdout as the test results are on stderr
+        // stdout as the test results are on stderr, adding additional args
+        // specified by the .arcconfig
         $appNames = $this->getAppNames();
-        exec("$cmd $managepyPath test -v2 $appNames 2>&1",
+        $additionalArgs = $this->getAdditionalManageArgs();
+        exec("$cmd $managepyPath test -v2 $appNames $additionalArgs 2>&1",
              $testLines, $testExitCode);
 
         $testResults = array();
