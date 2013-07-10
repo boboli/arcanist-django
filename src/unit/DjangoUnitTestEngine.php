@@ -219,7 +219,6 @@ final class DjangoUnitTestEngine extends ArcanistBaseUnitTestEngine {
             }
 
             // delete the ,cover file
-            echo "path: $path\n";
             unlink($path);
 
             // only add to coverage report if the path was originally
